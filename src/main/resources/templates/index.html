@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <title>Database Object Extractor</title>
+  <link rel="stylesheet" type="text/css" href="/css/index.css">
+</head>
+<body>
+<div class="main-container">
+  <!-- Left Pane - Filters -->
+  <div class="left-pane">
+    <form id="extractForm">
+      <div class="form-group">
+        <label for="db-type">DB Type</label>
+        <select id="db-type" name="dbType">
+          <option value="MSSQL_SERVER">MSSQL SERVER</option>
+          <option value="POSTGRESQL">PostgreSQL SERVER</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="server">Server</label>
+        <input type="text" id="server" name="server" th:value="localhost" required>
+      </div>
+
+      <div class="form-group">
+        <label for="database">Database</label>
+        <input type="text" id="database" name="database" required>
+      </div>
+
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" required>
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required>
+      </div>
+
+      <div class="form-group">
+        <label for="schema">Database Schema:</label>
+        <input type="text" id="schema" name="schema" th:value="dbo" required>
+      </div>
+
+      <div class="form-group">
+        <label for="dbObjects">Database Objects</label>
+        <div class="multi-select-container">
+          <div class="multi-select-box" id="dbObjectsBox">Select objects...</div>
+          <div class="multi-select-dropdown" id="dbObjectsDropdown">
+            <div class="multi-select-option" data-value="ALL">ALL</div>
+            <div class="multi-select-option" data-value="TABLE">TABLE</div>
+            <div class="multi-select-option" data-value="VIEW">VIEW</div>
+            <div class="multi-select-option" data-value="FUNCTION">FUNCTION</div>
+            <div class="multi-select-option" data-value="PROCEDURE">PROCEDURE</div>
+            <div class="multi-select-option" data-value="TRIGGER">TRIGGER</div>
+          </div>
+          <div class="selected-items" id="selectedItems"></div>
+          <input type="hidden" id="dbObjects" name="dbObjects">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="pattern-header">
+          <label>Table Patterns</label>
+        </div>
+        <div class="pattern-input-group">
+          <input type="text" class="pattern-input" id="tablePatternInput">
+          <button type="button" class="add-pattern-btn" data-type="table">Add</button>
+        </div>
+        <div class="pattern-list" id="tablePatterns"></div>
+      </div>
+
+      <div class="form-group">
+        <div class="pattern-header">
+          <label>View Patterns</label>
+        </div>
+        <div class="pattern-input-group">
+          <input type="text" class="pattern-input" id="viewPatternInput">
+          <button type="button" class="add-pattern-btn" data-type="view">Add</button>
+        </div>
+        <div class="pattern-list" id="viewPatterns"></div>
+      </div>
+
+      <div class="form-group">
+        <div class="pattern-header">
+          <label>Procedure Patterns</label>
+        </div>
+        <div class="pattern-input-group">
+          <input type="text" class="pattern-input" id="procedurePatternInput">
+          <button type="button" class="add-pattern-btn" data-type="procedure">Add</button>
+        </div>
+        <div class="pattern-list" id="procedurePatterns"></div>
+      </div>
+
+      <div class="form-group">
+        <div class="pattern-header">
+          <label>Function Patterns</label>
+        </div>
+        <div class="pattern-input-group">
+          <input type="text" class="pattern-input" id="functionPatternInput">
+          <button type="button" class="add-pattern-btn" data-type="function">Add</button>
+        </div>
+        <div class="pattern-list" id="functionPatterns"></div>
+      </div>
+
+      <div class="form-group">
+        <div class="pattern-header">
+          <label>Trigger Patterns</label>
+        </div>
+        <div class="pattern-input-group">
+          <input type="text" class="pattern-input" id="triggerPatternInput">
+          <button type="button" class="add-pattern-btn" data-type="trigger">Add</button>
+        </div>
+        <div class="pattern-list" id="triggerPatterns"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="outputFormat">Output Format</label>
+        <select id="outputFormat" name="outputFormat">
+          <option value="TEXT">Text</option>
+          <option value="JSON">JSON</option>
+        </select>
+      </div>
+
+      <div class="button-group">
+        <button type="submit" id="extractBtn">Extract</button>
+        <button type="button" id="downloadBtn">Download</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Right Pane - Output -->
+  <div class="right-pane">
+    <!-- Top Section -->
+    <div class="right-top-pane">
+      <!-- Object List -->
+
+      <!-- Object Tree -->
+      <div class="object-tree-pane">
+        <h3 class="pane-title">Database Stat</h3>
+        <div id="objectTree"></div>
+      </div>
+    </div>
+
+    <!-- Bottom Section -->
+    <div class="right-bottom-pane">
+      <div class="output-header">
+        <h3 class="output-title">Output</h3>
+        <div id="status" class="status" style="display: none;"></div>
+        <div class="output-controls">
+          <div class="token-counter">
+            <span class="token-label">Tokens:</span>
+            <span class="token-value" id="tokenCount">0</span>
+          </div>
+          <button type="button" id="cancelBtn" style="display: none;">Cancel</button>
+          <button type="button" id="copyBtn">Copy Content</button>
+        </div>
+      </div>
+      <div id="output"></div>
+    </div>
+</div>
+</div>
+
+<div class="overlay" id="downloadOverlay">
+  <div class="overlay-content">
+    <div class="spinner"></div>
+    <div class="progress-bar">
+      <div class="progress-bar-fill"></div>
+    </div>
+    <div class="overlay-message">Downloading database objects...</div>
+  </div>
+</div>
+<script>
+  const output = document.getElementById('output');
+  const status = document.getElementById('status');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const cancelBtn = document.getElementById('cancelBtn');
+  const extractBtn = document.getElementById('extractBtn');
+  const copyBtn = document.getElementById('copyBtn');
+  const outputFormat = document.getElementById('outputFormat');
+  const multiSelectBox = document.getElementById('dbObjectsBox');
+  const dropdown = document.getElementById('dbObjectsDropdown');
+  const selectedItems = document.getElementById('selectedItems');
+  const dbObjectsInput = document.getElementById('dbObjects');
+  const overlay = document.getElementById('downloadOverlay');
+  let totalTokens = 0;
+  const tokenCountElement = document.getElementById('tokenCount');
+  let selected = new Set();
+
+  const ALL_OPTIONS = ['TABLE', 'VIEW', 'FUNCTION', 'PROCEDURE', 'TRIGGER'];
+
+  let extractedContent = '';
+  let abortController = null;
+  let updateTimer = null;
+  let pendingContent = '';
+
+  let dbState = {
+    TABLE: { count: 0, objects: new Set() },
+    VIEW: { count: 0, objects: new Set() },
+    FUNCTION: { count: 0, objects: new Set() },
+    PROCEDURE: { count: 0, objects: new Set() },
+    TRIGGER: { count: 0, objects: new Set() }
+  };
+
+  // Pattern management
+  const patterns = {
+    table: new Set(),
+    view: new Set(),
+    procedure: new Set(),
+    function: new Set(),
+    trigger: new Set()
+  };
+
+  function addPattern(type, pattern) {
+    if (!pattern) return;
+    patterns[type].add(pattern);
+    updatePatternDisplay(type);
+  }
+
+  function removePattern(type, pattern) {
+    patterns[type].delete(pattern);
+    updatePatternDisplay(type);
+  }
+
+  function updatePatternDisplay(type) {
+    const container = document.getElementById(`${type}Patterns`);
+    container.innerHTML = Array.from(patterns[type]).map(pattern => `
+    <div class="pattern-item">
+      ${pattern}
+      <span class="remove-item pattern-remove-item" data-type="${type}" data-pattern="${pattern}">x</span>
+    </div>
+  `).join('');
+  }
+
+  // Initialize pattern buttons
+  document.querySelectorAll('.add-pattern-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const type = btn.dataset.type;
+      const input = document.getElementById(`${type}PatternInput`);
+      addPattern(type, input.value.trim());
+      input.value = '';
+    });
+  });
+
+  // Handle pattern removal
+  document.addEventListener('click', e => {
+    if (e.target.classList.contains('pattern-remove-item')) {
+      const { type, pattern } = e.target.dataset;
+      removePattern(type, pattern);
+    }
+  });
+
+
+  function updateObjectTree() {
+    const objectTree = document.getElementById('objectTree');
+    objectTree.innerHTML = Object.entries(dbState).map(([type, data]) => `
+    <div class="tree-node" data-type="${type}">
+      <div class="tree-node-header">
+        <span class="expand-btn">+</span>
+        ${type} (${data.count})
+      </div>
+      <div class="tree-node-content">
+        ${Array.from(data.objects).map(name => `<div>${name}</div>`).join('')}
+      </div>
+    </div>
+  `).join('');
+  }
+
+  // Handle tree node expansion
+  document.addEventListener('click', e => {
+    const header = e.target.closest('.tree-node-header');
+    if (header) {
+      const node = header.parentElement;
+      node.classList.toggle('expanded');
+      const btn = header.querySelector('.expand-btn');
+      btn.textContent = node.classList.contains('expanded') ? '-' : '+';
+    }
+  });
+
+  function updateTokenCount(newTokens) {
+    totalTokens += newTokens;
+    tokenCountElement.textContent = totalTokens.toLocaleString();
+  }
+
+  function showOverlay() {
+    overlay.style.display = 'flex';
+  }
+
+  function hideOverlay() {
+    overlay.style.display = 'none';
+  }
+  // Copy button handler
+  copyBtn.addEventListener('click', async function() {
+    try {
+      await navigator.clipboard.writeText(output.textContent);
+      const originalText = copyBtn.textContent;
+      copyBtn.textContent = 'Copied!';
+      copyBtn.classList.add('copy-success');
+      setTimeout(() => {
+        copyBtn.textContent = originalText;
+        copyBtn.classList.remove('copy-success');
+      }, 2000);
+    } catch (err) {
+      showStatus('Failed to copy: ' + err.message, 'error');
+    }
+  });
+
+  function getFormData() {
+    return {
+      dbType: document.getElementById('db-type').value,
+      server: document.getElementById('server').value,
+      database: document.getElementById('database').value,
+      username: document.getElementById('username').value,
+      password: document.getElementById('password').value,
+      schema: document.getElementById('schema').value,
+      outputFormat: outputFormat.value,
+      objectTypes: Array.from(selected),
+      tablePatterns: Array.from(patterns.table),
+      viewPatterns: Array.from(patterns.view),
+      procedurePatterns: Array.from(patterns.procedure),
+      functionPatterns: Array.from(patterns.function),
+      triggerPatterns: Array.from(patterns.trigger)
+    };
+  }
+
+  function showStatus(message, type) {
+    status.textContent = message;
+    status.style.display = 'block';
+    status.className = 'status ' + type;
+  }
+
+  function updateOutput() {
+    if (pendingContent) {
+      output.textContent += pendingContent;
+      output.scrollTop = output.scrollHeight;
+      pendingContent = '';
+    }
+  }
+
+  function resetUI(processing = false) {
+    extractBtn.disabled = processing;
+    downloadBtn.disabled = processing;
+    cancelBtn.style.display = processing ? 'inline-block' : 'none';
+    copyBtn.style.display = processing ? 'none' : 'inline-block';
+    if (!processing) {
+      abortController = null;
+      if (updateTimer) {
+        clearInterval(updateTimer);
+        updateTimer = null;
+      }
+    }
+  }
+
+  function resetDbState() {
+    dbState = {
+      TABLE: { count: 0, objects: new Set() },
+      VIEW: { count: 0, objects: new Set() },
+      FUNCTION: { count: 0, objects: new Set() },
+      PROCEDURE: { count: 0, objects: new Set() },
+      TRIGGER: { count: 0, objects: new Set() }
+    };
+    updateObjectTree();
+  }
+
+  // Rest of the event handlers remain the same...
+  cancelBtn.addEventListener('click', () => {
+    if (abortController) {
+      abortController.abort();
+      showStatus('Operation cancelled by user', 'error');
+      resetUI(false);
+    }
+  });
+
+  document.getElementById('extractForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    // Reset UI state
+    output.textContent = '';
+    extractedContent = '';
+    pendingContent = '';
+    totalTokens = 0;
+    tokenCountElement.textContent = '0';
+    resetDbState();
+
+    resetUI(true);
+    showStatus('Processing...', 'processing');
+
+    abortController = new AbortController();
+
+    try {
+      const response = await fetch('api/extract', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'text/event-stream'
+        },
+        body: JSON.stringify(getFormData()),
+        signal: abortController.signal
+      });
+
+      if (!response.ok) {
+        throw new Error('HTTP error, status = ' + response.status);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      updateTimer = setInterval(updateOutput, 100);
+
+      while (true) {
+        const {value, done} = await reader.read();
+        if (done) {
+          updateOutput();
+          showStatus('Extraction completed successfully!', 'processing');
+          resetUI(false);
+          break;
+        }
+
+        buffer += decoder.decode(value, {stream: true});
+        let eventEnd = buffer.indexOf('\n\n');
+
+        while (eventEnd >= 0) {
+          const eventData = buffer.slice(0, eventEnd);
+          buffer = buffer.slice(eventEnd + 2);
+
+          const lines = eventData.split('\n');
+          for (const line of lines) {
+            if (line.startsWith('data:')) {
+              const data = line.slice(5);
+              if (data) {
+                try {
+                  const responseObj = JSON.parse(data);
+                  pendingContent += responseObj.extract + '\n';
+                  updateTokenCount(responseObj.tokens);
+
+                  // Update database state
+                  if (responseObj.type && responseObj.name) {
+                    dbState[responseObj.type].count++;
+                    dbState[responseObj.type].objects.add(responseObj.name);
+                    //updateObjectList();
+                    updateObjectTree();
+                  }
+                } catch (e) {
+                  console.error('Error parsing JSON:', e);
+                  pendingContent += data + '\n';
+                }
+              }
+            }
+          }
+
+          eventEnd = buffer.indexOf('\n\n');
+        }
+      }
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        showStatus('Operation cancelled by user', 'error');
+      } else {
+        showStatus('Error: ' + error.message, 'error');
+        console.error('Extraction error:', error);
+      }
+      resetUI(false);
+    }
+  });
+
+  downloadBtn.addEventListener('click', async function() {
+    try {
+      showOverlay();
+      showStatus('Downloading...', 'processing');
+
+      const response = await fetch('api/extract/download', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(getFormData())
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = getFormData().outputFormat.toLowerCase() === 'json' ? 'output.json' : 'output.txt';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+
+      showStatus('Download completed!', 'processing');
+    } catch (error) {
+      showStatus('Download error: ' + error.message, 'error');
+      console.error('Download error:', error);
+    } finally {
+      hideOverlay();
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', function() {
+    // Toggle dropdown
+    multiSelectBox.addEventListener('click', () => {
+      dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+    });
+
+
+    // Close overlay if ESC key is pressed
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && overlay.style.display === 'flex') {
+        hideOverlay();
+      }
+    });
+
+    // Close overlay if clicked outside the content
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) {
+        hideOverlay();
+      }
+    });
+
+
+
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!multiSelectBox.contains(e.target) && !dropdown.contains(e.target)) {
+        dropdown.style.display = 'none';
+      }
+    });
+
+    // Handle option selection
+    dropdown.addEventListener('click', (e) => {
+      const option = e.target.closest('.multi-select-option');
+      if (!option) return;
+
+      const value = option.dataset.value;
+
+      if (value === 'ALL') {
+        selected.clear();
+        ALL_OPTIONS.forEach(opt => selected.add(opt));
+      } else {
+        if (selected.has('ALL')) {
+          selected.clear();
+        }
+        selected.add(value);
+      }
+
+      updateSelectedItems();
+    });
+
+    function updateSelectedItems() {
+      // Update hidden input
+      dbObjectsInput.value = Array.from(selected).join(',');
+
+      // Update visual representation
+      selectedItems.innerHTML = Array.from(selected).map(item => `
+      <span class="selected-item">
+        ${item}
+        <span class="remove-item" data-value="${item}">x</span>
+      </span>
+    `).join('');
+
+      // Update placeholder text
+      multiSelectBox.textContent = selected.size ? '' : 'Select objects...';
+    }
+
+    // Handle remove item
+    selectedItems.addEventListener('click', (e) => {
+      if (e.target.classList.contains('remove-item')) {
+        const value = e.target.dataset.value;
+        selected.delete(value);
+        updateSelectedItems();
+      }
+    })
+  });
+</script>
+</body>
+</html>
